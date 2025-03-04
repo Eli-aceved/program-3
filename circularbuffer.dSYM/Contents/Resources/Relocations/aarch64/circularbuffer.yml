@@ -1,0 +1,14 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/elizabethacevedo/Desktop/CPE464/Programs/Program#3/program-3/circularbuffer'
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _initBuffer, symObjAddr: 0x0, symBinAddr: 0x1000036E4, symSize: 0x8C }
+  - { offsetInCU: 0x82, offset: 0x82, size: 0x8, addend: 0x0, symName: _initBuffer, symObjAddr: 0x0, symBinAddr: 0x1000036E4, symSize: 0x8C }
+  - { offsetInCU: 0xB4, offset: 0xB4, size: 0x8, addend: 0x0, symName: _isFull, symObjAddr: 0x8C, symBinAddr: 0x100003770, symSize: 0x2C }
+  - { offsetInCU: 0xDC, offset: 0xDC, size: 0x8, addend: 0x0, symName: _isEmpty, symObjAddr: 0xB8, symBinAddr: 0x10000379C, symSize: 0x24 }
+  - { offsetInCU: 0x104, offset: 0x104, size: 0x8, addend: 0x0, symName: _enqueue, symObjAddr: 0xDC, symBinAddr: 0x1000037C0, symSize: 0x118 }
+  - { offsetInCU: 0x144, offset: 0x144, size: 0x8, addend: 0x0, symName: _dequeue, symObjAddr: 0x1F4, symBinAddr: 0x1000038D8, symSize: 0x128 }
+  - { offsetInCU: 0x17A, offset: 0x17A, size: 0x8, addend: 0x0, symName: _display, symObjAddr: 0x31C, symBinAddr: 0x100003A00, symSize: 0x120 }
+  - { offsetInCU: 0x1C8, offset: 0x1C8, size: 0x8, addend: 0x0, symName: _freeBuffer, symObjAddr: 0x43C, symBinAddr: 0x100003B20, symSize: 0x28 }
+  - { offsetInCU: 0x1EC, offset: 0x1EC, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x464, symBinAddr: 0x100003B48, symSize: 0x2CC }
+...
