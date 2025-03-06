@@ -11,8 +11,6 @@
  * 
  */
 
-
-
 #ifndef CIRCULARBUFFER_H
 #define CIRCULARBUFFER_H
 
