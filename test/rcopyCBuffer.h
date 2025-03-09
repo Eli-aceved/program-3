@@ -1,6 +1,13 @@
 #ifndef RCOPYCBUFFER_H
 #define RCOPYCBUFFER_H
 
+/* Includes */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <arpa/inet.h> // For htonl() and ntohl() conversions
+
 /* Defines */
 #define MAX_PDU 1407        // Max size for a PDU (header(7) + payload(1400))
 #define PACKETNUM_BYTES 4   // Number of bytes for packet number in PDU

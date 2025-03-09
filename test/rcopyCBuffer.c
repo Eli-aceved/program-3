@@ -2,7 +2,15 @@
  * Circular Buffer for rcopy (client)
  * File: rcopyCBuffer.c
  * 
- * Program Description: 
+ * Program Description: This file is the CLIENT'S circular buffer meant to 
+ * store packets while waiting for missing packets, used for error recovery. If there are any missing packets, 
+ * this places the packets out of order keeping packets from being written to the disk 
+ * until all the packets within the window are received.
+ * The buffer for rcopy tracks the lowest unprocessed sequence/packet number 
+ * (so it keeps a check on the order of packets ensuring they get written to disk in order).
+ * 
+ * Note: Rcopy requests missing packets using SREJ and acknowledges packets using RR. 
+ *       Rcopy doesn't send data, it only sends RR acknoledgements and retranmission requests (SREJ) to the server.
  * 
  * Author: Elizabeth Acevedo
  * Date created: 03/06/2025
@@ -10,11 +18,6 @@
  */
 
 /* Includes */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <arpa/inet.h> // For htonl() and ntohl() conversions
 #include "rcopyCBuffer.h"
 
 /* Global Variable */
@@ -65,7 +68,7 @@ int getPacketNum(uint8_t *packet) {
 }
 
 
- /* Store Packet Into the Circular Buffer */
+ /* Stores Out-of-Order Packets Into the Circular Buffer */
 void storetoBuffer(uint8_t *packet, uint32_t packet_size) {
     // Extract packet number from packet
     uint32_t packet_num = getPacketNum(packet);
@@ -86,7 +89,7 @@ void storetoBuffer(uint8_t *packet, uint32_t packet_size) {
 }
 
 
- /* Write Packet to Disk */
+/* Write Packet to Disk Once Having Received the Missing Packet */
 void writePDUtoDisk(uint32_t packet_num, uint8_t *target_buffer, uint32_t buff_indx) {
     // Indexing the buffer (this line is what makes buffer circular)
     //uint32_t buff_indx = packet_num % rcopybuff->size;
@@ -135,7 +138,7 @@ void retrieveFromBuffer(uint32_t packet_num, uint8_t *packet, uint8_t *target_bu
 }
 */
 
-/* Retrieve Next Packet from Buffer */
+/* Retrieve Next Packet from Buffer that Will Get Written to Disk */
 void retrieveNextPacket(uint8_t *packet) {
     // Check if buffer is empty
     if (rcopybuff->lowest_pktnum == 0xFFFFFFFF) {
