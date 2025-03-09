@@ -1,3 +1,9 @@
+## Version 0.1.2 - Client Buffer Created
+- Tested rcopyCBuffer to see if retrieving packets and the circular aspect of the buffer works. 
+- Testing passed. Currently data gets overrriden in the buffer, but program is designed to flush all packets before overriding data
+- Created a .h for rcopyCBuffer
+- All testing was done within the test folder where a separate makefile was used
+
 ## Version 0.1.1 - Created new files and worked on FSM
 - server.c changes: checkArgs handles both command line arguments 
 - Will renaming circularbuffer.c .h to serverWindowBuff (maybe) and reimplement the queue for the server
