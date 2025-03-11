@@ -1,6 +1,6 @@
 /**
  * Circular Buffer
- * File: circularbuffer.c
+ * File: windowBuffer.c
  * 
  * Program Description: This file is the SERVER'S circular buffer 
  * meant to track packets that have been sent but may need retransmission 
@@ -17,7 +17,7 @@
  */
 
 #include "windowBuffer.h"
-#include "server.c"
+
 
 
 /* Global Variable */
@@ -43,14 +43,13 @@ void initWindow(int window_size) {
     }
 
     // Initializations
-    windowbuff->lowest_pktnum = 0xFFFFFFFF; // Set to max value
-    windowbuff->highest_pktnum = 0;
+    windowbuff->lowest_pktnum = 0;
+    windowbuff->highest_pktnum = window_size;
     windowbuff->current_pktnum = 0;
     windowbuff->size = window_size;
 
     // Initialize each packet in the buffer
     for (int32_t i = 0; i < window_size; i++) {
-        windowbuff->packets[i].validFlag = 0;  // Invalid (slot is unused)
         windowbuff->packets[i].packet_num = 0; // Set to 0
         windowbuff->packets[i].size = 0;       // Set to 0
     }
@@ -59,48 +58,62 @@ void initWindow(int window_size) {
  /* Store Packet Into the Circular Buffer */
 void storetoWindowBuffer(uint8_t *packet, uint32_t packet_size) {
     // Extract packet number from packet
-    uint32_t packet_num = getPacketNum(packet); // change to createPDU
+    uint32_t packet_num = 0; // Initialize to 0
+    memcpy(&packet_num, &packet[0], sizeof(packet_num));
+    packet_num = ntohl(packet_num);
 
     // Indexing the buffer (this line is what makes buffer circular)
     uint32_t buff_indx = packet_num % windowbuff->size;
 
     // Store packet and other packet info into buffer
     memcpy(windowbuff->packets[buff_indx].packet, packet, packet_size);
-    windowbuff->packets[buff_indx].validFlag = 1;
     windowbuff->packets[buff_indx].packet_num = packet_num;
     windowbuff->packets[buff_indx].size = packet_size;
 
-    // Update lowest packet number
-    if (packet_num < windowbuff->lowest_pktnum) {
-        windowbuff->lowest_pktnum = packet_num;
-    }
+    // Update current packet number
+    windowbuff->current_pktnum = packet_num + 1; // Increments by 1 for next packet since it's initialized to 0
 }
+
 
 /* Retrieve Packet from Buffer */
-void retrieveLowestPacket(uint8_t *packet) {
-    // Check if buffer is empty
-    if (windowbuff->lowest_pktnum == 0xFFFFFFFF) {
-        printf("Buffer is empty\n");
-    }
-
+int retrieveFromWindowBuffer(uint8_t *dest_buffer, uint32_t packet_num) {
     // Indexing the buffer (this line is what makes buffer circular)
-    uint32_t buff_indx = windowbuff->lowest_pktnum % windowbuff->size;
+    uint32_t buff_indx = packet_num % windowbuff->size;
 
-    // Find the next smallest valid packet
-    uint32_t next_lowest = 0xFFFFFFFF;
-    for (int32_t i = 0; i < windowbuff->size; i++) {
-        if (windowbuff->packets[i].validFlag == 1 && windowbuff->packets[i].packet_num < next_lowest) {
-            next_lowest = windowbuff->packets[i].packet_num;
-        }
+    // Check if packet is in buffer
+    if (windowbuff->packets[buff_indx].packet_num == packet_num) {
+        // Copy packet to destination buffer
+        memcpy(dest_buffer, windowbuff->packets[buff_indx].packet, windowbuff->packets[buff_indx].size);
     }
-    // Update lowest packet number to the next available packet or reset if no packets are available
-    windowbuff->lowest_pktnum = next_lowest;
+
+    return windowbuff->packets[buff_indx].size;
 }
 
-void windowisClosed() {
+
+void retrieveLowestPacket(uint8_t *dest_buffer) {
+    retrieveFromWindowBuffer(dest_buffer, windowbuff->lowest_pktnum);
+}
+
+uint32_t getCurrent() {
+    return windowbuff->current_pktnum;
+}
+
+/* Check if Window is Closed */
+int windowisClosed() {
     if (windowbuff->current_pktnum == windowbuff->highest_pktnum) {
         return 1;
     }
+    return 0;
+}
+
+/* Slide Window */
+void slideWindow(uint32_t RR_packetnum) {
+    // Determine slide amount
+    uint32_t slide_amount = (RR_packetnum) - (windowbuff->lowest_pktnum);
+
+    // Slide window by updating the lowest and highest packet numbers
+    windowbuff->lowest_pktnum += slide_amount;
+    windowbuff->highest_pktnum += slide_amount;
 }
 
 /* Free rcopy Circular Buffer */

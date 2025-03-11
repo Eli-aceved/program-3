@@ -36,7 +36,6 @@ struct windowBuffer {
 
 struct packetinWBuffer {
     uint8_t packet[MAX_PDU];   // Holds entire PDU
-    uint8_t validFlag;          // 0 = invalid, 1 = valid
     uint32_t packet_num;        // Sequence number (host order)
     uint32_t size;              // Size of PDU
 };
@@ -44,7 +43,11 @@ struct packetinWBuffer {
 /* Function Prototypes */
 void initWindow(int window_size);
 void storetoWindowBuffer(uint8_t *packet, uint32_t packet_size);
-void windowisClosed();
+int retrieveFromWindowBuffer(uint8_t *dest_buffer, uint32_t packet_num);
+void retrieveLowestPacket(uint8_t *dest_buffer);
+uint32_t getCurrent();
+void slideWindow(uint32_t RR_packetnum);
+int windowisClosed();
 void freewindowbuffer();
 
 

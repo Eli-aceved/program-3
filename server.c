@@ -14,61 +14,75 @@
 #include "gethostbyname.h"
 #include "networks.h"
 #include "safeUtil.h"
+#include "pollLib.h"
 #include "cpe464.h"
 #include "windowBuffer.h"
+#include "helperfuncs.h"
 
 #define MAXBUF 80
 #define MAX_PAYLOAD 1400    // Max size for payload
-#define PACKETNUM_BYTES 4   // Number of bytes for packet number in PDU
 
-void processClient(int socketNum);
+void processClients(int socketNum, float errorRate);
 int checkArgs(int argc, char *argv[]);
+size_t readFromFile(uint8_t *pdu, FILE *file, uint16_t buffer_size, uint8_t *data_chunk, uint8_t flag, uint32_t packet_num);
+void parseFilenamePacket(int socketNum, uint8_t *filename_packet, size_t filename_packet_size, struct sockaddr_in6 client_addr);
+void serverWindowControl(int socketNum, FILE *file, uint16_t buffer_size, uint32_t window_size, struct sockaddr_in6 client_addr);
+int processRRs_N_SREJs(int socketNum);
 
 int main(int argc, char *argv[])
 { 
 	int socketNum = 0;				
 	int portNumber = 0;
+	float errorRate = 0.0;
 
 	portNumber = checkArgs(argc, argv);
+	errorRate = atof(argv[1]);
 	socketNum = udpServerSetup(portNumber);
 	setupPollSet();
 	addToPollSet(socketNum);
-	processClient(socketNum);
-	close(socketNum);
+
+	while(1) {
+		processClients(socketNum, errorRate);
+	}
 	
 	return 0;
 }
 
-void processClient(int socketNum)
-{
-	int dataLen = 0; 
-	char buffer[MAXBUF + 1];	  
+
+void processClients(int socketNum, float errorRate) {
+	uint8_t filename_packet[MAX_PDU] = {0};	  
 	struct sockaddr_in6 client;		
-	int clientAddrLen = sizeof(client);	
-	
-	buffer[0] = '\0';
-	while (buffer[0] != '.')
-	{
-		dataLen = safeRecvfrom(socketNum, buffer, MAXBUF, 0, (struct sockaddr *) &client, &clientAddrLen);
-	
-		printf("Received message from client with ");
-		printIPInfo(&client);
-		printf(" Len: %d \'%s\'\n", dataLen, buffer);
+	int clientAddrLen = sizeof(client);
 
-		// just for fun send back to client number of bytes received
-		sprintf(buffer, "bytes: %d", dataLen);
-		safeSendto(socketNum, buffer, strlen(buffer)+1, 0, (struct sockaddr *) & client, clientAddrLen);
+	int filename_packet_size = safeRecvfrom(socketNum, filename_packet, MAX_PDU, 0, (struct sockaddr *) &client, &clientAddrLen);
 
+	if (pollCall(0)) {
+		
+		// FORK HERE
+		int pid = fork();
+		if (pid < 0) {
+			perror("Error forking");
+			exit(EXIT_FAILURE);
+		}
+		if (pid == 0) {
+			// Child process
+			sendErr_init(errorRate, DROP_ON, FLIP_OFF, DEBUG_OFF, RSEED_OFF);
+			parseFilenamePacket(socketNum, filename_packet, filename_packet_size, client);
+			exit(EXIT_SUCCESS);
+		}
+		else {
+			// Parent doesn't do anything special
+		}
 	}
+
 }
 
 int checkArgs(int argc, char *argv[])
 {
 	// Checks args and returns port number
 	int portNumber = 0;
-	float errorRate = 0.0;
 
-	if (argc > 2)
+	if (argc > 3)
 	{
 		fprintf(stderr, "Usage %s [optional port number]\n", argv[0]);
 		exit(-1);
@@ -79,127 +93,150 @@ int checkArgs(int argc, char *argv[])
 	 * server <error rate> <port number>
 	 */
 	if (argc == 2)
-	{
-		errorRate = atof(argv[0]);
-		portNumber = atoi(argv[1]);
+	{;
+		portNumber = atoi(argv[2]);
 	}
-	return errorRate;
 	return portNumber;
 }
 
 
-size_t readFromFile(char *filename, uint16_t buffer_size, size_t data_chunk) {
-    FILE *file = fopen(filename, "rb");
-    if (file == NULL || !file) {
-        perror("Error opening file");
-        return -1;
-    }
+size_t readFromFile(uint8_t *pdu, FILE *file, uint16_t buffer_size, uint8_t *data_chunk, uint8_t flag, uint32_t packet_num) {
     // Read from file
-    size_t bytes_read = fread(data_chunk, 1, buffer_size, file);
+    uint16_t bytes_read = fread(data_chunk, 1, buffer_size, file);
     if (bytes_read == 0) {
         perror("Error reading from file");
         return 1;
     }
     if (bytes_read > 0) {
-        createPDU(data_chunk, bytes_read, );
+        createPDU(pdu, data_chunk, bytes_read, packet_num, 16); // Data packet flag
     }
-    // Debugging: print data_chunk
-    // Close file
+
+	storetoWindowBuffer(pdu, bytes_read + 7);
+
+	return bytes_read;
+}
+
+
+void parseFilenamePacket(int socketNum, uint8_t *filename_packet, size_t filename_packet_size, struct sockaddr_in6 client_addr) {
+
+	uint8_t filename[MAX_PDU] = {0};
+	uint16_t buffer_size = 0;
+	uint32_t window_size = 0;
+	uint8_t filename_length = 0;
+
+	filename_length = filename_packet[7];
+
+	// Extract filename from filename packet
+	memcpy(filename, &filename_packet[8], filename_length);
+	// Extract buffer size from filename packet
+	memcpy(&buffer_size, &filename_packet[8 + filename_length], sizeof(buffer_size));
+	// Extract window size from filename packet
+	memcpy(&window_size, &filename_packet[8 + filename_length + sizeof(buffer_size)], sizeof(window_size));
+
+	// Open file
+	FILE *file = fopen((char *)filename, "rb");
+	if (!file) {
+		perror("Error opening file");
+		exit(EXIT_FAILURE);
+	}
+
+
+	serverWindowControl(socketNum, file, buffer_size, window_size, client_addr);
+
+	// Close file
     fclose(file);
 }
 
-uint8_t *createPDU(uint8_t *data_chunk, size_t bytes_read, uint32_t packet_num, uint8_t flag) {
-	// Initialize PDU buffer
-	uint8_t pdu[MAX_PDU] = {0};
-
-	/* Add the header to the PDU */
-	// Add a packet sequence number to the PDU (4-bytes)
-	memcpy(pdu, &packet_num, PACKETNUM_BYTES);
-	// Add checksum to the PDU (2 bytes)
-	uint16_t checksum = 0; // Placeholder for checksum
-	memcpy(pdu + PACKETNUM_BYTES, &checksum, sizeof(checksum));
-
-	// Add flag to the PDU (1 byte)
-	memcpy(pdu + PACKETNUM_BYTES + sizeof(checksum), &flag, sizeof(flag));
-
-	// Handle different PDU types based on flag value
-	if (flag == 5) {	//  RR packet
-		// Add the RR sequence number to the PDU (4 bytes) which packet number are we RRing to?
-		uint32_t RR_num = 0; // Placeholder for RR sequence number
-		memcpy(pdu + PACKETNUM_BYTES + sizeof(checksum) + sizeof(flag), &RR_num, sizeof(RR_num));
-
-	}
-	else if (flag == 6) {	// SREJ packet
-		// Add the SREJ sequence number to the PDU (4 bytes) which packet number are we SREJing to?
-		uint32_t SREJ_num = 0; // Placeholder for SREJ sequence number
-		memcpy(pdu + PACKETNUM_BYTES + sizeof(checksum) + sizeof(flag), &SREJ_num, sizeof(SREJ_num));
-
-	}
-	else if (flag == 8 || flag == 9 || flag == 10 || flag == 16) {  
-		/* Flags: 
-		Contains filename/buffer-size/window-size (rcopy to server)
-		Contains the response to the filename packet (server to rcopy)
-		EOF indication or is the last packet (server to rcopy)
-		Data packet (server to rcopy)
-		*/
-		// Add relevant data to the payload
-		memcpy(pdu + PACKETNUM_BYTES + sizeof(checksum) + sizeof(flag), data_chunk, bytes_read);
-
-	}
-	else {
-		fprintf(stderr, "Error: Invalid PDU flag value %d\n", flag);
-		return NULL;
-	}
-
-}
-
-void serverWindowControl(int socketNum, FILE *file, int buffer_size, int window_size, struct sockaddr_in *client_addr, socklen_t client_len) {
+void serverWindowControl(int socketNum, FILE *file, uint16_t buffer_size, uint32_t window_size, struct sockaddr_in6 client_addr) {
 	uint8_t flag = 16; // Default at data packet flag
 	uint8_t data_chunk[MAX_PAYLOAD] = {0};
+	uint8_t pdu[MAX_PDU] = {0};	// Creating PDUs
+	uint8_t dest_buffer[MAX_PDU] = {0};	// Retrieving packets from buffer (holds lowest packet)
 
 	// Initialize window
 	initWindow(window_size);
 
-	// Initialize counters
-	int count = 0;
 	// while not at EOF
 	while (!feof(file) ) {
 		// Check if window is open
-		if (!windowisClosed) {
+		if (!windowisClosed()) {
 			// Read from file
-			readFromFile(file, buffer_size, data_chunk);
+			readFromFile(pdu, file, buffer_size, data_chunk, flag, getCurrent());
 			// Check if reached end of file
 			if (feof(file)){
-				flag == 10; // EOF flag
+				flag = 10; // EOF flag
 			}
 			// Create PDU
-			uint8_t *pdu = createPDU(data_chunk, buffer_size, count, flag);
+			createPDU(pdu, data_chunk, buffer_size, getCurrent(), flag);
 			// Send packets from buffer
-			sendtoErr(socketNum, pdu, buffer_size, 0, (struct sockaddr *) client_addr, client_len);
+			sendtoErr(socketNum, pdu, buffer_size, 0, (struct sockaddr *) &client_addr, sizeof(client_addr));
 			
 			// Poll for RRs/SREJs (non-blocking)
 			while (pollCall(0)){
 				// Process RRs/SREJs
-				//processRRs();processSREJs();
+				processRRs_N_SREJs(socketNum);
 			}
 		}
 
-		// While window is closed
-		while (windowisClosed) {
+		// Check if window is closed
+		if (windowisClosed()) {
+			int count = 0;
 			// If timeout occurs, resend lowest unacknowledged packet
-			while (pollCall(1) ) {
-				uint8_t *lowest_pdu = retrieveLowestPacket( ); // Get lowest packet
+			while (pollCall(1000) && count < 10) {
+				retrieveLowestPacket(dest_buffer); // Get lowest packet
 				// Resend lowest packet
 
-				sendtoErr(socketNum, lowest_pdu, buffer_size, 0, (struct sockaddr *) client_addr, client_len);
+				sendtoErr(socketNum, dest_buffer, buffer_size, 0, (struct sockaddr *) &client_addr, sizeof(client_addr));
 				count++;
 			}
 			// Process RRs/SREJs
-			//processRRs();processSREJs();
+			processRRs_N_SREJs(socketNum);
 		}
-		// free window buffer
-		//freewindowbuffer();
 	}
 
 }
+
+int processRRs_N_SREJs(int socketNum) {
+	int dataLen = 0; 
+	char buffer[MAX_PDU] = {0};	  
+	uint8_t pdu[MAX_PDU] = {0};
+	struct sockaddr_in6 client;		
+	int clientAddrLen = sizeof(client);
+
+	uint32_t packet_num = 0;
+
+	dataLen = safeRecvfrom(socketNum, (char *)buffer, MAX_PDU, 0, (struct sockaddr *) &client, &clientAddrLen);
+
+	// Assign designated flag
+	uint8_t flag = buffer[6];
+
+	if (in_cksum((unsigned short *)buffer, dataLen) == 0) {
+		// Extract packet number from packet
+
+		memcpy(&packet_num, &buffer[7], sizeof(packet_num));
+		packet_num = ntohl(packet_num);
+
+		// Check for EOF ACK flag for graceful termination
+		if (flag == 34) { // End of file ACK flag
+			return 3;	// return fave number
+		}
+
+		// Check if RR or SREJ
+		if (flag == 5) {	// RR flag
+			// Slide window
+			slideWindow(packet_num);
+		}
+		else if (flag == 6) {	// SREJ flag
+			uint8_t requested_pdu[MAX_PDU] = {0};
+			int pdu_size = retrieveFromWindowBuffer(requested_pdu, packet_num);
+			createPDU(pdu, &requested_pdu[7], pdu_size, packet_num, 17); // Resent data packet flag
+			sendtoErr(socketNum, (char *)requested_pdu, dataLen, 0, (struct sockaddr *) &client, clientAddrLen);
+		}
+	}
+
+	return 0;
+}
+
+
+
 

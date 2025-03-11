@@ -1,3 +1,10 @@
+## Version 0.1.5 - Finished most server logic
+- Created helperfuncs.c and .h to call func that creates PDU on both server and rcopy
+- Has not been tested
+- new functions in server and windowBuffer
+- ran make and came back error-free
+- testing and doing rcopy next
+
 ## Version 0.1.4 - Pushing current progress
 - Deleted any TCP stuff from networks.c and .h
 - uncommented lines for using sendtoErr() library
