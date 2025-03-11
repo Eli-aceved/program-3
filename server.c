@@ -136,12 +136,6 @@ void parseFilenamePacket(int socketNum, uint8_t *filename_packet, size_t filenam
 	memcpy(&window_size, &filename_packet[8 + filename_length + sizeof(buffer_size)], sizeof(window_size));
 	window_size = ntohl(window_size);
 
-	printf("Received message from client\n");
-	printf(" Length: %u\n", filename_length);
-	printf(" Filename: %s\n", (char *)filename);
-	printf(" Buffer Size: %u\n", buffer_size);
-	printf(" Window Size: %u\n", window_size);
-
 	// Open file
 	FILE *file = fopen((char *)filename, "rb");
 	if (!file) {
@@ -245,7 +239,5 @@ int processRRs_N_SREJs(int socketNum) {
 
 	return 0;
 }
-
-
 
 
