@@ -1,50 +1,51 @@
 /**
- * Circular Buffer Header File
- * File: circularbuffer.h
+ * Window Buffer Header File
+ * File: uffer.h
  *
- * Program Description: This header defines the circular buffer structure and function prototypes 
- * for enqueueing, dequeueing, and managing protocol data units (PDUs).
+ * Program Description: This header
  * 
  * 
  * Author: Elizabeth Acevedo
  * Date created: 03/01/2025
  * 
+ * Modified: 03/10/2025
+ * 
  */
 
-#ifndef CIRCULARBUFFER_H
-#define CIRCULARBUFFER_H
+#ifndef WINDOWBUFFER_H
+#define WINDOWBUFFER_H
 
 /* Includes */
-#include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <arpa/inet.h> // For htonl() and ntohl() conversions
 
-/* Definitions */
-#define MAX_PDU 1407    // Max size for a PDU (header(7) + payload(1400))
+/* Defines */
+#define MAX_PDU 1407        // Max size for a PDU (header(7) + payload(1400))
 
-/* Circular buffer structure for storing PDUs */
-typedef struct {
-    uint8_t buff[MAX_PDU];
-} Buffer;
+/* Structs */
+struct windowBuffer {
+    struct packetinWBuffer *packets;
+    uint32_t lowest_pktnum;  // Keeps track of the next packet to write to disk
+    uint32_t highest_pktnum; // Keeps track of the highest packet
+    uint32_t current_pktnum; // Keeps track of the current packet
+    uint32_t size;
+};
 
-/* Circular buffer structure for managing PDUs */
-typedef struct {
-    Buffer *window;
-    int front;
-    int rear;
-    int size;
-    int capacity;
-    int window_indx; 
-} CircularBuffer;
+struct packetinWBuffer {
+    uint8_t packet[MAX_PDU];   // Holds entire PDU
+    uint8_t validFlag;          // 0 = invalid, 1 = valid
+    uint32_t packet_num;        // Sequence number (host order)
+    uint32_t size;              // Size of PDU
+};
 
 /* Function Prototypes */
-void initBuffer(CircularBuffer *cb, int capacity);
-int isFull(CircularBuffer *cb);
-int isEmpty(CircularBuffer *cb);
-void enqueue(CircularBuffer *cb, uint8_t *data, int data_len);
-uint8_t *dequeue(CircularBuffer *cb);
-void display(CircularBuffer *cb);
-void freeBuffer(CircularBuffer *cb);
+void initWindow(int window_size);
+void storetoWindowBuffer(uint8_t *packet, uint32_t packet_size);
+void windowisClosed();
+void freewindowbuffer();
+
 
 #endif 

@@ -91,9 +91,6 @@ void storetoBuffer(uint8_t *packet, uint32_t packet_size) {
 
 /* Write Packet to Disk Once Having Received the Missing Packet */
 void writePDUtoDisk(uint32_t packet_num, uint8_t *target_buffer, uint32_t buff_indx) {
-    // Indexing the buffer (this line is what makes buffer circular)
-    //uint32_t buff_indx = packet_num % rcopybuff->size;
-    
     // Copy packet to leaving_packet that will get written to disk
     memcpy(target_buffer, rcopybuff->packets[buff_indx].packet, rcopybuff->packets[buff_indx].size);
 
@@ -142,7 +139,7 @@ void retrieveFromBuffer(uint32_t packet_num, uint8_t *packet, uint8_t *target_bu
 void retrieveNextPacket(uint8_t *packet) {
     // Check if buffer is empty
     if (rcopybuff->lowest_pktnum == 0xFFFFFFFF) {
-        return;
+        printf("Buffer is empty\n");
     }
 
     // Indexing the buffer (this line is what makes buffer circular)

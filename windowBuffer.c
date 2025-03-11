@@ -17,41 +17,8 @@
  */
 
 #include "windowBuffer.h"
+#include "server.c"
 
-/* Includes */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <arpa/inet.h> // For htonl() and ntohl() conversions
-
-/* Defines */
-#define MAX_PDU 1407        // Max size for a PDU (header(7) + payload(1400))
-#define PACKETNUM_BYTES 4   // Number of bytes for packet number in PDU
-
-/* Structs */
-struct windowBuffer {
-    struct packetinWBuffer *packets;
-    uint32_t lowest_pktnum;  // Keeps track of the next packet to write to disk
-    uint32_t highest_pktnum; // Keeps track of the highest packet
-    uint32_t current_pktnum; // Keeps track of the current packet
-    uint32_t size;
-};
-
-struct packetinWBuffer {
-    uint8_t packet[MAX_PDU];   // Holds entire PDU
-    uint8_t validFlag;          // 0 = invalid, 1 = valid
-    uint32_t packet_num;        // Sequence number (host order)
-    uint32_t size;              // Size of PDU
-};
-
-/* Function Prototypes */
-void initWindow(int window_size);
-void readFromFile(char *filename);
-void storetoWindowBuffer(uint8_t *packet, uint32_t packet_size);
-void createPDU(uint8_t *packet, uint32_t packet_size);
-void sendACKPacketsFromBuff();
-void freewindowbuffer();
 
 /* Global Variable */
 struct windowBuffer *windowbuff;
@@ -89,10 +56,6 @@ void initWindow(int window_size) {
     }
 }
 
-void readFromFile(char *filename) {
-    FILE *fp;
-}
-
  /* Store Packet Into the Circular Buffer */
 void storetoWindowBuffer(uint8_t *packet, uint32_t packet_size) {
     // Extract packet number from packet
@@ -113,6 +76,32 @@ void storetoWindowBuffer(uint8_t *packet, uint32_t packet_size) {
     }
 }
 
+/* Retrieve Packet from Buffer */
+void retrieveLowestPacket(uint8_t *packet) {
+    // Check if buffer is empty
+    if (windowbuff->lowest_pktnum == 0xFFFFFFFF) {
+        printf("Buffer is empty\n");
+    }
+
+    // Indexing the buffer (this line is what makes buffer circular)
+    uint32_t buff_indx = windowbuff->lowest_pktnum % windowbuff->size;
+
+    // Find the next smallest valid packet
+    uint32_t next_lowest = 0xFFFFFFFF;
+    for (int32_t i = 0; i < windowbuff->size; i++) {
+        if (windowbuff->packets[i].validFlag == 1 && windowbuff->packets[i].packet_num < next_lowest) {
+            next_lowest = windowbuff->packets[i].packet_num;
+        }
+    }
+    // Update lowest packet number to the next available packet or reset if no packets are available
+    windowbuff->lowest_pktnum = next_lowest;
+}
+
+void windowisClosed() {
+    if (windowbuff->current_pktnum == windowbuff->highest_pktnum) {
+        return 1;
+    }
+}
 
 /* Free rcopy Circular Buffer */
 void freewindowbuffer() {

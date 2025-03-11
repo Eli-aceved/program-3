@@ -33,7 +33,7 @@ void initBuffer(int window_size);
 int getPacketNum(uint8_t *packet);
 void storetoBuffer(uint8_t *packet, uint32_t packet_size);
 void writePDUtoDisk(uint32_t packet_num, uint8_t *leaving_packet, uint32_t buff_indx);
-void retrieveFromBuffer(uint32_t packet_num, uint8_t *packet, uint8_t *leaving_packet);
+void retrieveNextPacket(uint8_t *packet);
 void testStorePkt(int seq_num, int size);
 void printBuffer();
 void freeRcopyBuffer();

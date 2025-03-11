@@ -1,3 +1,13 @@
+## Version 0.1.4 - Pushing current progress
+- Deleted any TCP stuff from networks.c and .h
+- uncommented lines for using sendtoErr() library
+- error rate on server command line args
+- added necessary poll functions on server main
+- sliding window control for server is on server file
+- create PDU and reading from file done on server
+- server is incomplete
+- circular queue's need modifying
+
 ## Version 0.1.3 - Circular Buffer Modifications
 - Making changes on both circular buffers (server and rcopy) to be more compatible to the purpose of each buffer. 
 - Prototypes for functions I'll be modifying were created
