@@ -19,7 +19,6 @@
 #include "windowBuffer.h"
 
 
-
 /* Global Variable */
 struct windowBuffer *windowbuff;
 

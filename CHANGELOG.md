@@ -1,3 +1,6 @@
+## Version 0.1.6
+- Saving progress
+
 ## Version 0.1.5 - Finished most server logic
 - Created helperfuncs.c and .h to call func that creates PDU on both server and rcopy
 - Has not been tested

@@ -19,7 +19,6 @@
 #include "windowBuffer.h"
 #include "helperfuncs.h"
 
-#define MAXBUF 80
 #define MAX_PAYLOAD 1400    // Max size for payload
 
 void processClients(int socketNum, float errorRate);
@@ -37,6 +36,7 @@ int main(int argc, char *argv[])
 
 	portNumber = checkArgs(argc, argv);
 	errorRate = atof(argv[1]);
+
 	socketNum = udpServerSetup(portNumber);
 	setupPollSet();
 	addToPollSet(socketNum);
@@ -54,10 +54,11 @@ void processClients(int socketNum, float errorRate) {
 	struct sockaddr_in6 client;		
 	int clientAddrLen = sizeof(client);
 
-	int filename_packet_size = safeRecvfrom(socketNum, filename_packet, MAX_PDU, 0, (struct sockaddr *) &client, &clientAddrLen);
+	// Poll for incoming packets
+	if (pollCall(0) > 0) {
 
-	if (pollCall(0)) {
-		
+		int filename_packet_size = safeRecvfrom(socketNum, filename_packet, MAX_PDU, 0, (struct sockaddr *) &client, &clientAddrLen);
+
 		// FORK HERE
 		int pid = fork();
 		if (pid < 0) {
@@ -82,7 +83,7 @@ int checkArgs(int argc, char *argv[])
 	// Checks args and returns port number
 	int portNumber = 0;
 
-	if (argc > 3)
+	if (argc > 3 || argc < 2)
 	{
 		fprintf(stderr, "Usage %s [optional port number]\n", argv[0]);
 		exit(-1);
@@ -92,8 +93,8 @@ int checkArgs(int argc, char *argv[])
 	 * server uses two command line arguments: 
 	 * server <error rate> <port number>
 	 */
-	if (argc == 2)
-	{;
+	if (argc == 3)
+	{
 		portNumber = atoi(argv[2]);
 	}
 	return portNumber;
@@ -130,8 +131,16 @@ void parseFilenamePacket(int socketNum, uint8_t *filename_packet, size_t filenam
 	memcpy(filename, &filename_packet[8], filename_length);
 	// Extract buffer size from filename packet
 	memcpy(&buffer_size, &filename_packet[8 + filename_length], sizeof(buffer_size));
+	buffer_size = ntohs(buffer_size);
 	// Extract window size from filename packet
 	memcpy(&window_size, &filename_packet[8 + filename_length + sizeof(buffer_size)], sizeof(window_size));
+	window_size = ntohl(window_size);
+
+	printf("Received message from client\n");
+	printf(" Length: %u\n", filename_length);
+	printf(" Filename: %s\n", (char *)filename);
+	printf(" Buffer Size: %u\n", buffer_size);
+	printf(" Window Size: %u\n", window_size);
 
 	// Open file
 	FILE *file = fopen((char *)filename, "rb");
@@ -167,7 +176,7 @@ void serverWindowControl(int socketNum, FILE *file, uint16_t buffer_size, uint32
 				flag = 10; // EOF flag
 			}
 			// Create PDU
-			createPDU(pdu, data_chunk, buffer_size, getCurrent(), flag);
+			//createPDU(pdu, data_chunk, buffer_size, getCurrent(), flag);
 			// Send packets from buffer
 			sendtoErr(socketNum, pdu, buffer_size, 0, (struct sockaddr *) &client_addr, sizeof(client_addr));
 			
