@@ -21,6 +21,7 @@
 #include "safeUtil.h"
 #include "helperfuncs.h"
 #include "cpe464.h"
+#include "checksum.h"
 #include "rcopyCBuffer.h"
 #include "pollLib.h"
 #include "buffmgmnt.h"

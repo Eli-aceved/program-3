@@ -18,6 +18,7 @@
 #include "cpe464.h"
 #include "windowBuffer.h"
 #include "helperfuncs.h"
+#include "checksum.h"
 
 #define MAX_PAYLOAD 1400    // Max size for payload
 
