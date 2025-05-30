@@ -3,10 +3,12 @@
  * File: windowBuffer.c
  * 
  * Program Description: This file is the SERVER'S circular buffer 
- * meant to track packets that have been sent but may need retransmission 
- * if a Selective-Reject (SREJ) is received by the client. The packets are 
- * stored in the buffer until the server receives an acknowledgment (RR) from the client.
- * The server tracks the oldest/lowest unacknowledged packet, current and most recent sent packet, and the highest .
+ * meant to track packets that the server sends to rcopy, in some cases,
+ * may need retransmission if a Selective-Reject (SREJ) is received by
+ * the client. The packets are stored in the buffer until the server 
+ * receives an acknowledgment (RR) from the client. The server tracks
+ * the oldest/lowest unacknowledged packet, current and most recent sent 
+ * packet, and the highest.
  * 
  * 
  * reads from disk 
@@ -88,11 +90,12 @@ int retrieveFromWindowBuffer(uint8_t *dest_buffer, uint32_t packet_num) {
     return windowbuff->packets[buff_indx].size;
 }
 
-
+/* Retrieves Lowest Packet from Buffer */
 void retrieveLowestPacket(uint8_t *dest_buffer) {
     retrieveFromWindowBuffer(dest_buffer, windowbuff->lowest_pktnum);
 }
 
+/* Retrieve Current Packet from Buffer */
 uint32_t getCurrent() {
     return windowbuff->current_pktnum;
 }

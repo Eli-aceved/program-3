@@ -1,4 +1,4 @@
-/**
+/*********************************************************************************************************************
  * Circular Buffer for rcopy (client)
  * File: rcopyCBuffer.c
  * 
@@ -15,7 +15,7 @@
  * Author: Elizabeth Acevedo
  * Date created: 03/06/2025
  * 
- */
+ *********************************************************************************************************************/
 
 /* Includes */
 #include "rcopyCBuffer.h"
@@ -55,7 +55,7 @@ void initBuffer(int window_size) {
 
 }
 
-/* Extracts Packet Number from PDU */
+/* Extracts Packet/Sequence Number from PDU */
 int getPacketNum(uint8_t *packet) {
     // Extract packet number from packet
     uint32_t packetnum_netword = 0;
@@ -67,8 +67,21 @@ int getPacketNum(uint8_t *packet) {
     return packetnum_hostord;
 }
 
+/* Returns packet sequence/number of next packet to be flushed */
+uint32_t getNextPacketNum() {
+	return rcopybuff->lowest_pktnum;
+}
 
- /* Stores Out-of-Order Packets Into the Circular Buffer */
+/* Returns whether packet with packet_num */
+int isPacketValid(uint32_t packet_num) {
+
+	// Calculate the index of buffer to store packet at
+	int buf_indx = packet_num % rcopybuff->size;
+
+	return rcopybuff->packets[buf_indx].validFlag;
+}
+
+/* Stores Out-of-Order Packets Into the Circular Buffer */
 void storetoBuffer(uint8_t *packet, uint32_t packet_size) {
     // Extract packet number from packet
     uint32_t packet_num = getPacketNum(packet);
@@ -82,81 +95,44 @@ void storetoBuffer(uint8_t *packet, uint32_t packet_size) {
     rcopybuff->packets[buff_indx].packet_num = packet_num;
     rcopybuff->packets[buff_indx].size = packet_size;
 
-    // Update lowest packet number
+    // Update lowest packet number in rcopy buffer
     if (packet_num < rcopybuff->lowest_pktnum) {
         rcopybuff->lowest_pktnum = packet_num;
     }
 }
 
 
-/* Write Packet to Disk Once Having Received the Missing Packet */
-void writePDUtoDisk(uint32_t packet_num, uint8_t *target_buffer, uint32_t buff_indx) {
-    // Copy packet to leaving_packet that will get written to disk
-    memcpy(target_buffer, rcopybuff->packets[buff_indx].packet, rcopybuff->packets[buff_indx].size);
-
-    rcopybuff->packets[buff_indx].validFlag = 0;
-    /*
-    // Write packet to disk
-    // Open file
-    FILE *fp = fopen("output.txt", "a");
-    // Error check
-    if (!fp) {
-        perror("Error opening file");
-        exit(EXIT_FAILURE);
-    }
-    // Write packet to file
-    fwrite(packet, sizeof(packet), 1, fp);
-    // Close file
-    fclose(fp);
-    */
-
-}
-
-/* Retrieve Packet from Buffer 
-void retrieveFromBuffer(uint32_t packet_num, uint8_t *packet, uint8_t *target_buffer) {
-    // Indexing the buffer (this line is what makes buffer circular)
-    uint32_t buff_indx = packet_num % rcopybuff->size;
-
-    // Check if packet is in buffer
-    if (rcopybuff->packets[buff_indx].validFlag == 1 && rcopybuff->packets[buff_indx].packet_num == rcopybuff->lowest_pktnum) {
-        // Write to disk
-        writePDUtoDisk(packet_num, target_buffer, buff_indx);
-        
-        // Update next lowest packet number (only if valid and packet number is less than new lowest)
-        for (int32_t i = 0; i < rcopybuff->size; i++) {
-            if (rcopybuff->packets[i].validFlag == 1 && rcopybuff->packets[i].packet_num > rcopybuff->lowest_pktnum) {
-                rcopybuff->lowest_pktnum = rcopybuff->packets[i].packet_num;
-            }
-        }
-        // If no packets are available, reset `lowest_pktnum` to max value
-        rcopybuff->lowest_pktnum = 0xFFFFFFFF;
-        
-    }
-}
-*/
-
 /* Retrieve Next Packet from Buffer that Will Get Written to Disk */
-void retrieveNextPacket(uint8_t *packet) {
+int retrieveNextPacket(uint8_t *dest_buff) {
     // Check if buffer is empty
     if (rcopybuff->lowest_pktnum == 0xFFFFFFFF) {
         printf("Buffer is empty\n");
     }
 
-    // Indexing the buffer (this line is what makes buffer circular)
-    uint32_t buff_indx = rcopybuff->lowest_pktnum % rcopybuff->size;
+    uint32_t next_packet_num = rcopybuff->lowest_pktnum;
 
-    // Write to disk
-    writePDUtoDisk(rcopybuff->lowest_pktnum, packet, buff_indx);
+    // Indexing the buffer (calculation of index that packet will be stored to)
+    uint32_t buff_indx = next_packet_num % rcopybuff->size;
+
+    // Copy packet to destination buffer
+    memcpy(dest_buff, rcopybuff->packets[buff_indx].packet, rcopybuff->packets[buff_indx].size);
+
+    rcopybuff->packets[buff_indx].validFlag = 0; // Mark packet as invalid (packet has been processed)
 
     // Find the next smallest valid packet
     uint32_t next_lowest = 0xFFFFFFFF;
+    
     for (int32_t i = 0; i < rcopybuff->size; i++) {
         if (rcopybuff->packets[i].validFlag == 1 && rcopybuff->packets[i].packet_num < next_lowest) {
             next_lowest = rcopybuff->packets[i].packet_num;
         }
     }
     // Update lowest packet number to the next available packet or reset if no packets are available
-    rcopybuff->lowest_pktnum = next_lowest;
+    next_packet_num = next_lowest;
+    
+
+    return rcopybuff->packets[buff_indx].size;
+
 }
 
 /* Free rcopy Circular Buffer */
@@ -165,54 +141,4 @@ void freeRcopyBuffer() {
     free(rcopybuff);
 }
 
-/* Print data structure for testing/debugging */
-void printBuffer() {
-	printf("\nSmallest Packet Sequence Number: %u\n", rcopybuff->lowest_pktnum);
-	for (int i = 0; i < rcopybuff->size; i++) {
-		printf("Index %d:\n", i);
-		printf("\tValid: %d\n", rcopybuff->packets[i].validFlag);
-		printf("\tSize: %d\n", rcopybuff->packets[i].size);
-		printf("\tPacket Seq Num: %u\n", rcopybuff->packets[i].packet_num);
-	}
-
-}
-
-void testStorePkt(int seq_num, int size) {
-	uint8_t packet[size];
-	uint32_t pkt_num = htonl(seq_num);
-	memcpy(packet, &pkt_num, sizeof(pkt_num));
-
-	storetoBuffer(packet, size);
-}
-
-int main(int argc, char *argv[]) {
-	initBuffer(6);
-
-    testStorePkt(1, 1111);
-	testStorePkt(2, 50);
-	testStorePkt(3, 1000);
-	testStorePkt(5, 1234);
-    testStorePkt(9, 90);
-    testStorePkt(12, 12);
-
-	uint8_t packet[MAX_PDU];
-	
-	printBuffer(); // 
-
-	retrieveNextPacket(packet); // 
-
-	printBuffer();
-
-	retrieveNextPacket(packet); // 
-
-	printBuffer();
-
-	retrieveNextPacket(packet); // 
-
-	printBuffer();
-
-	freeRcopyBuffer();
-
-	return 0;
-}
 

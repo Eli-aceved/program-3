@@ -35,10 +35,16 @@ int main(int argc, char *argv[])
 	float errorRate = 0.0;
 
 	portNumber = checkArgs(argc, argv);
-	errorRate = atof(argv[1]);
+
+	setupPollSet();
+	if ((errorRate = getErrorRate(argv[1])) == -1) {
+		return -1;
+	}
+	
+	
 
 	socketNum = udpServerSetup(portNumber);
-	setupPollSet();
+	
 	addToPollSet(socketNum);
 
 	while(1) {
@@ -65,7 +71,7 @@ void processClients(int socketNum, float errorRate) {
 			perror("Error forking");
 			exit(EXIT_FAILURE);
 		}
-		if (pid == 0) {
+		else if (pid == 0) {
 			// Child process
 			sendErr_init(errorRate, DROP_ON, FLIP_OFF, DEBUG_OFF, RSEED_OFF);
 			parseFilenamePacket(socketNum, filename_packet, filename_packet_size, client);
@@ -85,7 +91,7 @@ int checkArgs(int argc, char *argv[])
 
 	if (argc > 3 || argc < 2)
 	{
-		fprintf(stderr, "Usage %s [optional port number]\n", argv[0]);
+		fprintf(stderr, "Usage %s error-rate [optional port number]\n", argv[0]);
 		exit(-1);
 	}
 	
@@ -97,6 +103,7 @@ int checkArgs(int argc, char *argv[])
 	{
 		portNumber = atoi(argv[2]);
 	}
+
 	return portNumber;
 }
 

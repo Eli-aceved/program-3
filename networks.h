@@ -16,10 +16,27 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+/* Defines */
 #define LISTEN_BACKLOG 10
 
+/* Structs */
+struct connectionInfo {
+	uint8_t *from_filename;
+	uint8_t *to_filename;
+	uint32_t window_size;
+	uint16_t buffer_size;
+	float errorRate;
+	char *hostName;
+	int serverPort;
+	struct sockaddr_in6 *serverAddress;
+};
+
+/* Function Prototypes */
 // For UDP Server and Client
 int udpServerSetup(int serverPort);
 int setupUdpClientToServer(struct sockaddr_in6 *serverAddress, char * hostName, int serverPort);
-
+void setupConnectionInfo(uint8_t *from_filename, uint8_t *to_filename, uint32_t window_size, uint16_t buffer_size, float errorRate, char *hostName, int serverPort, struct sockaddr_in6 *serverAddress);
+struct connectionInfo getConnectionInfo();
+int replaceSocket(int old_socket);
+void freeConnectInfo();
 #endif

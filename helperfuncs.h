@@ -16,11 +16,12 @@
 #include <arpa/inet.h> // For htonl() and ntohl() conversions
 #include <string.h>
 #include <stdio.h>
+#include <_stdlib.h>
 
 #define PACKETNUM_BYTES 4   // Number of bytes for packet number in PDU
 
 /* Function Prototypes */
-void createPDU(uint8_t *pdu, uint8_t *data_chunk, uint16_t data_size, uint32_t packet_num, uint8_t flag);
-
+int createPDU(uint8_t *pdu, uint8_t *data_chunk, uint16_t data_size, uint32_t packet_num, uint8_t flag);
+float getErrorRate(char *errate_entry);
 
 #endif

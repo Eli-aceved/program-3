@@ -1,8 +1,16 @@
+## Version 0.1.7
+- rcopy buffer done
+- FSM
+- server
+- rcopy helper funcs
+- networks
+- link error on local computer not allowing me to test
+
 ## Version 0.1.6
 - Saving progress
 
 ## Version 0.1.5 - Finished most server logic
-- Created helperfuncs.c and .h to call func that creates PDU on both server and rcopy
+- Created helperfuncs.c and .h to call func that creates PDUs on both server and rcopy
 - Has not been tested
 - new functions in server and windowBuffer
 - ran make and came back error-free
