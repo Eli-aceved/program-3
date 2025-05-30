@@ -16,7 +16,7 @@
 #include <arpa/inet.h> // For htonl() and ntohl() conversions
 #include <string.h>
 #include <stdio.h>
-#include <_stdlib.h>
+#include <stdlib.h>
 
 #define PACKETNUM_BYTES 4   // Number of bytes for packet number in PDU
 

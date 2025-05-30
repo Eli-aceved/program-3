@@ -1,3 +1,7 @@
+## Version 0.1.8
+- Bug cleanup
+
+
 ## Version 0.1.7
 - rcopy buffer done
 - FSM
