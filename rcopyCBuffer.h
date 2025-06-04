@@ -31,8 +31,10 @@ struct packetinBuffer {
 /* Function Prototypes */
 void initBuffer(int window_size);
 int getPacketNum(uint8_t *packet);
+uint32_t getNextPacketNum();
 void storetoBuffer(uint8_t *packet, uint32_t packet_size);
 int retrieveNextPacket(uint8_t *packet);
+int isPacketValid(uint32_t packet_num);
 void freeRcopyBuffer();
 
 

@@ -29,7 +29,7 @@ State curr_state = IN_ORDER;
 int next = 0;
 
 /* FSM */
-void dataMngmntFSM(int socketNum, FILE *file) {
+int dataMngmntFSM(int socketNum, FILE *file) {
     uint32_t expected = 0;
 	uint32_t highest = 0;
 
@@ -70,6 +70,7 @@ void dataMngmntFSM(int socketNum, FILE *file) {
             break;
             
     }
+    return 0;
 }
 
 int in_order_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *highest) {
@@ -85,12 +86,12 @@ int in_order_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *high
 
 	if (in_cksum((uint16_t *)recv_packet, recv_packet_len) == 0) {
 
-		uint32_t packet_num = extractPktNum(recv_packet);
+		uint32_t packet_num = getPacketNum(recv_packet);
 		
 		if (recv_packet[6] == 10) {
 			fwrite(&recv_packet[7], 1, recv_packet_len - 7, file);
 			expected_netord = htonl(*expected);
-			send_packet_len = createPDU(send_PDU, 0, 32, (uint8_t *) &expected_netord, 1);
+			send_packet_len = createPDU(send_PDU, 0, 32, expected_netord, 1);
 
 			sendtoErr(socketNum, send_PDU, send_packet_len, 0, (struct sockaddr *) cinfo.serverAddress, sizeof(struct sockaddr_in6));
 
@@ -107,7 +108,7 @@ int in_order_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *high
 			expected_netord = htonl(*expected);
 
 			// RR expected
-			send_packet_len = createPDU(send_PDU, 0, 5, (uint8_t *) &expected_netord, 4);
+			send_packet_len = createPDU(send_PDU, 0, 5, expected_netord, 4);
 			sendtoErr(socketNum, send_PDU, send_packet_len, 0, (struct sockaddr *) cinfo.serverAddress, sizeof(struct sockaddr_in6));
 
 			return 1;
@@ -117,11 +118,11 @@ int in_order_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *high
 			expected_netord = htonl(*expected);
 
 			// SREJ expected
-			send_packet_len = createPDU(send_PDU, 0, 6, (uint8_t *) &expected_netord, 4);
+			send_packet_len = createPDU(send_PDU, 0, 6, expected_netord, 4);
 			sendtoErr(socketNum, send_PDU, send_packet_len, 0, (struct sockaddr *) cinfo.serverAddress, sizeof(struct sockaddr_in6));
 
 			// Buffer received
-			storePacket(recv_packet, recv_packet_len);
+			storetoBuffer(recv_packet, recv_packet_len);
 
 			*highest = packet_num;
 
@@ -151,11 +152,11 @@ int buff_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *highest)
 
 	if (in_cksum((uint16_t *)recv_packet, recv_packet_len) == 0) {
 
-		uint32_t packet_num = extractPktNum(recv_packet);
+		uint32_t packet_num = getPacketNum(recv_packet);
 
 		if (packet_num > *expected) {
 
-			storePacket(recv_packet, recv_packet_len);
+			storetoBuffer(recv_packet, recv_packet_len);
 
 			*highest = packet_num;
 
@@ -170,8 +171,8 @@ int buff_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *highest)
 		}
 		else if (packet_num < *expected) {
 			uint32_t expected_netord = htonl(*expected);
-			int send_pkt_len = createPDU(send_PDU, (uint8_t *) &expected_netord, 4, 0, 5);
-			sendtoErr(socketNum, send_PDU, send_pkt_len, 0, (struct sockaddr *) cinfo.serverAddress, sizeof(struct sockaddr_in6));
+			int send_packet_len = createPDU(send_PDU, (uint8_t *) &expected_netord, 4, 0, 5);
+			sendtoErr(socketNum, send_PDU, send_packet_len, 0, (struct sockaddr *) cinfo.serverAddress, sizeof(struct sockaddr_in6));
 		}
 
 	}

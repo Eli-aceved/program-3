@@ -1,3 +1,17 @@
+
+## Version 0.2.0 - Cleared warnings and errors
+- Had errors preventing from running the program
+- Cleared warning about 'linker' done in the makefile
+- Made chenages to clear errors on:
+    - buffmgmnt.c
+    - buffmgmnt.h
+    - helperfuncs.c
+    - Makefile
+    - rcopyCBuffer.h
+    - server.c
+- Computer is crashing (not sure why)
+    - I had checked if i'm forking right and it looks good (mystery)
+
 ## Version 0.1.8
 - Bug cleanup
 

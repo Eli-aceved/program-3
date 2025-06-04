@@ -35,18 +35,18 @@ int main(int argc, char *argv[])
 	int portNumber = 0;
 	float errorRate = 0.0;
 
+	setupPollSet();
+
 	portNumber = checkArgs(argc, argv);
 
-	setupPollSet();
+	socketNum = udpServerSetup(portNumber);
+
+	addToPollSet(socketNum);
+
 	if ((errorRate = getErrorRate(argv[1])) == -1) {
 		return -1;
 	}
-	
-	
 
-	socketNum = udpServerSetup(portNumber);
-	
-	addToPollSet(socketNum);
 
 	while(1) {
 		processClients(socketNum, errorRate);
@@ -62,18 +62,19 @@ void processClients(int socketNum, float errorRate) {
 	int clientAddrLen = sizeof(client);
 
 	// Poll for incoming packets
-	if (pollCall(0) > 0) {
+	if (pollCall(-1) > 0) {
 
 		int filename_packet_size = safeRecvfrom(socketNum, filename_packet, MAX_PDU, 0, (struct sockaddr *) &client, &clientAddrLen);
 
 		// FORK HERE
-		int pid = fork();
+		pid_t pid = fork();
 		if (pid < 0) {
 			perror("Error forking");
-			exit(EXIT_FAILURE);
+			return;
 		}
 		else if (pid == 0) {
 			// Child process
+			printf("Child process created with PID: %d\n", getpid());
 			sendErr_init(errorRate, DROP_ON, FLIP_OFF, DEBUG_OFF, RSEED_OFF);
 			parseFilenamePacket(socketNum, filename_packet, filename_packet_size, client);
 			exit(EXIT_SUCCESS);

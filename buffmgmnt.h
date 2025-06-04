@@ -8,13 +8,18 @@
 #include <stdint.h>
 
 #include "networks.h"
+#include "cpe464.h"
+#include "rcopyCBuffer.h"
+#include "helperfuncs.h"
+#include "safeUtil.h"
 
 /* Defines */
 #define MAX_PDU 1407
 
 /* Function Prototypes */
-void dataMngmntFSM(int socketNum, FILE *file);
+int dataMngmntFSM(int socketNum, FILE *file);
 int in_order_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *highest);
-
+int buff_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *highest);
+int flush_state(int socketNum, FILE *file, uint32_t *expected, uint32_t *highest);
 
 #endif

@@ -15,11 +15,11 @@
 
 int createPDU(uint8_t *pdu, uint8_t *data_chunk, uint16_t data_size, uint32_t packet_num, uint8_t flag) {
 	// Convert packet number to network order
-	uint32_t packet_num_netword = htonl(packet_num);
+	//uint32_t packet_num_netword = htonl(packet_num);
 
 	/* Add the header to the PDU */
 	// Add a packet sequence number to the PDU (4-bytes)
-	memcpy(pdu, &packet_num_netword, PACKETNUM_BYTES);
+	memcpy(pdu, &packet_num, PACKETNUM_BYTES);
     // Add temporary filler for checksum to the PDU (2 bytes)
 	uint16_t checksum = 0; 
 	memcpy(&pdu[4], &checksum, 2);
